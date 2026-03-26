@@ -249,6 +249,14 @@
       .sig-controls { display: none; }
       canvas#sig-pad { border: none; background: transparent; }
     }
+
+    /* Clase temporal durante captura PDF */
+    .page.pdf-capture {
+      width: 794px !important; /* 210mm a 96dpi */
+      margin: 0 !important;
+      box-shadow: none !important;
+      padding: 38px 61px !important; /* ~10mm y 16mm a 96dpi */
+    }
   </style>
 </head>
 <body>
@@ -487,33 +495,30 @@ function getNombre() {
 }
 async function generatePDFBlob() {
   const el = document.getElementById('printable');
-  // Remove margin/shadow for clean capture
-  el.style.margin = '0';
-  el.style.boxShadow = 'none';
-  el.style.minHeight = '0';
-  // Hide canvas dashed border
+  el.classList.add('pdf-capture');
   canvas.style.border = 'none';
-  canvas.style.borderRadius = '0';
   hideForPDF(true);
+
   const blob = await html2pdf()
     .set({
       margin: [0,0,0,0],
       filename: getNombre() + '_acuerdo_notificacion.pdf',
       image: { type:'jpeg', quality:0.98 },
-      html2canvas: { scale:2, useCORS:true, logging:false, scrollY: 0, windowWidth: el.scrollWidth },
+      html2canvas: { scale:2, useCORS:true, logging:false, scrollY: -window.scrollY },
       jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
     })
     .from(el)
     .toPdf()
     .get('pdf')
-    .then(pdf => { pdf.deletePage(2); }) // remove any overflow page
+    .then(pdf => {
+      const total = pdf.internal.getNumberOfPages();
+      if (total > 1) pdf.deletePage(total);
+    })
     .outputPdf('blob');
+
   hideForPDF(false);
-  el.style.margin = '';
-  el.style.boxShadow = '';
-  el.style.minHeight = '';
+  el.classList.remove('pdf-capture');
   canvas.style.border = '1px dashed #aaa';
-  canvas.style.borderRadius = '3px';
   return blob;
 }
 
