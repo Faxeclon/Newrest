@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Acuerdo de Notificación - TD-U-03.2</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10pt;
+      background: #e8e8e8;
+      color: #000;
+    }
+
+    /* ── ACTION BAR ── */
+    .action-bar {
+      background: #1a3a6b;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .action-bar span {
+      color: #9ab4d8;
+      font-size: 8.5pt;
+      font-family: Arial, sans-serif;
+      flex: 1;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 4px;
+      font-size: 9pt;
+      font-family: Arial, sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-pdf         { background: #c8372d; color: #fff; }
+    .btn-sharepoint  { background: #057d54; color: #fff; }
+    .btn svg { width: 15px; height: 15px; fill: currentColor; flex-shrink: 0; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #222;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 9pt;
+      font-family: Arial, sans-serif;
+      display: none;
+      z-index: 9999;
+      max-width: 340px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      line-height: 1.5;
+    }
+    #toast.show    { display: block; }
+    #toast.success { background: #1e6b3c; }
+    #toast.error   { background: #8b1a14; }
+
+    /* Config modal */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 8px;
+      padding: 28px 32px;
+      width: 440px;
+      max-width: 95vw;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      font-family: Arial, sans-serif;
+    }
+    .modal h3 { font-size: 12pt; margin-bottom: 4px; color: #1a3a6b; }
+    .modal .modal-desc { font-size: 8pt; color: #666; margin-bottom: 16px; }
+    .modal label { display: block; font-size: 8.5pt; font-weight: 700; margin-bottom: 3px; color: #333; }
+    .modal input {
+      width: 100%; padding: 7px 10px; border: 1px solid #ccc;
+      border-radius: 4px; font-size: 9pt; margin-bottom: 4px;
+      font-family: Arial, sans-serif;
+    }
+    .modal .hint { font-size: 7.5pt; color: #888; margin-bottom: 10px; }
+    .modal .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+    .modal .modal-actions button {
+      padding: 8px 18px; border-radius: 4px; border: none;
+      font-size: 9pt; font-family: Arial, sans-serif; cursor: pointer; font-weight: 700;
+    }
+    .btn-cancel { background: #e0e0e0; color: #333; }
+    .btn-save   { background: #0078d4; color: #fff; }
+
+    /* ── PAGE ── */
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 20px auto;
+      padding: 15mm 18mm 15mm 18mm;
+      background: #fff;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+    }
+
+    /* ── HEADER TABLE ── */
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #000;
+      margin-bottom: 2px;
+      line-height: 1.05;
+    }
+    .header-table td {
+      border: 1px solid #000;
+      padding: 2px 5px;
+      vertical-align: middle;
+    }
+    .logo-cell {
+      width: 88px;
+      text-align: center;
+      padding: 6px 10px;
+    }
+    .logo-text {
+      font-size: 17pt;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #00b0f0;
+    }
+    .logo-text span { color: #000; }
+    .title-cell {
+      text-align: center;
+      font-size: 13pt;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .meta-top {
+      width: 165px;
+      font-size: 8.5pt;
+      font-weight: 400;
+      padding: 3px 5px;
+      line-height: 1.6;
+      white-space: nowrap;
+    }
+    .meta-mid {
+      width: 165px;
+      font-size: 8.5pt;
+      padding: 4px 8px;
+    }
+    .meta-bot {
+      width: 165px;
+      font-size: 8.5pt;
+      padding: 4px 8px;
+      text-align: center;
+    }
+
+    .subheader {
+      font-size: 7.5pt;
+      text-align: right;
+      font-style: italic;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    /* ── CONTENT ── */
+    .content { line-height: 1.5; }
+    .section { margin-bottom: 14px; }
+    .section p.main { font-weight: 700; margin-bottom: 6px; text-align: justify; }
+    .sub-title { font-weight: 700; margin-top: 8px; margin-bottom: 3px; }
+    .sub-content { margin-left: 12px; text-align: justify; }
+    .alpha-list { list-style: none; margin-left: 14px; margin-top: 4px; }
+    .alpha-list li { margin-bottom: 3px; }
+
+    /* ── SIGNATURE TABLE ── */
+    .signature-wrapper { margin: 22px auto 18px auto; width: 75%; }
+    .signature-table { width: 100%; border-collapse: collapse; }
+    .signature-table td {
+      border: 1px solid #000;
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: 9.5pt;
+      vertical-align: middle;
+    }
+    .signature-table td.label { width: 44%; }
+    .signature-table td.value { width: 56%; }
+
+    #nombre-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 9.5pt;
+      font-family: Arial, sans-serif;
+      background: transparent;
+      font-weight: 400;
+    }
+
+    canvas#sig-pad {
+      border: 1px dashed #aaa;
+      border-radius: 3px;
+      display: block;
+      width: 100%;
+      height: 55px;
+      background: #fafafa;
+      cursor: crosshair;
+    }
+    .sig-controls { display: flex; gap: 6px; margin-top: 4px; }
+    .sig-controls button {
+      font-size: 7.5pt;
+      padding: 2px 8px;
+      cursor: pointer;
+      border: 1px solid #888;
+      background: #efefef;
+      border-radius: 3px;
+      font-family: Arial, sans-serif;
+    }
+
+    /* ── FOOTER TABLE ── */
+    .footer-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8pt; }
+    .footer-table td {
+      border: 1px solid #000;
+      padding: 3px 8px;
+      width: 33.33%;
+      vertical-align: top;
+      line-height: 1.3;
+    }
+    .footer-table td .ft-label { font-weight: 700; }
+
+    @media print {
+      body { background: #fff; }
+      .action-bar { display: none; }
+      .page { margin: 0; box-shadow: none; }
+      .sig-controls { display: none; }
+      canvas#sig-pad { border: none; background: transparent; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ ACTION BAR ══════════════ -->
+<div class="action-bar">
+  <span>Acuerdo de Notificación · TD-U-03.2</span>
+
+  <button class="btn btn-pdf" onclick="downloadPDF()">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17h8v1H8v-1zm0-3h8v1H8v-1zm0-3h4v1H8v-1z"/></svg>
+    Descargar PDF
+  </button>
+
+  <button class="btn btn-sharepoint" onclick="openModal()">
+    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    PDF → SharePoint
+  </button>
+</div>
+
+<!-- ══════════════ SHAREPOINT CONFIG MODAL ══════════════ -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>📤 Enviar a SharePoint</h3>
+    <p class="modal-desc">
+      Necesitas registrar una app en Azure AD con permisos <strong>Sites.ReadWrite.All</strong>.<br>
+      Los datos se guardan solo en tu navegador (localStorage).
+    </p>
+
+    <label>Tenant ID</label>
+    <input type="text" id="cfg-tenant" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+    <p class="hint">Azure Portal → Azure Active Directory → Overview → Tenant ID</p>
+
+    <label>Client ID (App Registration)</label>
+    <input type="text" id="cfg-client" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+    <p class="hint">Azure Portal → App registrations → tu app → Application (client) ID</p>
+
+    <label>URL del sitio SharePoint</label>
+    <input type="text" id="cfg-site" placeholder="https://tuempresa.sharepoint.com/sites/RRHH" />
+
+    <label>Carpeta destino</label>
+    <input type="text" id="cfg-folder" placeholder="/Documentos/Acuerdos" value="/Documentos/Acuerdos" />
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveAndSend()">Autenticar y enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div id="toast"></div>
+
+<!-- ══════════════ PRINTABLE PAGE ══════════════ -->
+<div class="page" id="printable">
+
+  <!-- HEADER (3 rows, logo + título con rowspan=3, meta celdas separadas) -->
+  <table class="header-table">
+    <tr>
+      <td rowspan="3" class="logo-cell">
+        <!--
+          Para agregar el logo real reemplaza el div con:
+          <img src="./newrest-logo.png" alt="newrest" style="height:38px;" />
+        -->
+        <div class="logo-text">n<span>≡</span>wrest</div>
+      </td>
+      <td rowspan="3" class="title-cell">ACUERDO DE NOTIFICACIÓN</td>
+      <td class="meta-top">TD-U-03.2<br>INFLIGHT&#9746; REMOTE&#9746;B&amp;I&#9746;</td>
+    </tr>
+    <tr>
+      <td class="meta-mid">Rev n°1 fecha: 18/01/2023</td>
+    </tr>
+    <tr>
+      <td class="meta-bot">Página: 1/1</td>
+    </tr>
+  </table>
+
+  <p class="subheader">La actualización y distribución de copias impresas no está controlada</p>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <div class="section">
+      <p class="main">1. Me comprometo a informar inmediatamente al empleador cuando sufro de una enfermedad que implique cualquiera de los siguientes:</p>
+      <p class="sub-title">Síntomas futuros y lesiones pustulosas:</p>
+      <p class="sub-content">a. Diarrea, b. Fiebre, c. Vómitos, d. Ictericia, e. Dolor de garganta, f. Cualquier lesión que contenga pus en las manos, las muñecas o las partes expuestas del cuerpo (como forúnculos y heridas infectadas, por pequeñas que sean)</p>
+      <p class="sub-title">Diagnóstico médico futuro:</p>
+      <p class="sub-content">
+        Siempre que se le diagnostique que está enfermo con:<br>
+        a. Fiebre tifoidea (Salmonella tyhi), b. Shigelosis (Shigella spp), c. Infección por Escherrichia coli 0157:H7 (E. Coli), d. Hepatitis A (virus de la hepatitis), e. Norwalk y el virus similar a Norwalk, f. Staphylococcus aureus, g. Streptococcus pyogenes.
+      </p>
+    </div>
+
+    <div class="section">
+      <p class="main">2. Acepto informar a mi jefe de departamento antes de comenzar a trabajar si he sufrido alguna de las condiciones anteriores durante el periodo de mis días libres, período de licencia o durante el tiempo de trabajo.</p>
+    </div>
+
+    <div class="section">
+      <p class="main">3. He leído (o me han explicado) y entiendo los requisitos relativos a mis responsabilidades en virtud de este acuerdo para cumplir con:</p>
+      <ul class="alpha-list">
+        <li>a. Reportar los aspectos especificados anteriormente que incluyen Diagnósticos Médicos Futuros.</li>
+        <li>b. Restricciones o exclusiones laborales que se me imponen; y</li>
+        <li>c. Buenas prácticas de higiene.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <p class="main">4. Entiendo que el hecho de que no cumpla con veracidad, firme, devuelva y cumpla con los términos del Cuestionario de Salud y el Acuerdo de Notificación con todas las preguntas de seguimiento, pruebas y exámenes médicos, siempre que se solicite, podría resultar en la terminación del empleo y puede implicar acciones legales en mi contra.</p>
+    </div>
+
+  </div>
+
+  <!-- SIGNATURE BLOCK -->
+  <div class="signature-wrapper">
+    <table class="signature-table">
+      <tr>
+        <td class="label">NOMBRE DEL TRABAJADOR:</td>
+        <td class="value">
+          <input type="text" id="nombre-input" placeholder="Escriba el nombre aquí" />
+        </td>
+      </tr>
+      <tr>
+        <td class="label">FIRMA:</td>
+        <td class="value">
+          <canvas id="sig-pad" width="400" height="55"></canvas>
+          <div class="sig-controls">
+            <button onclick="clearSig()">✕ Borrar firma</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td class="label">FECHA:</td>
+        <td class="value">
+          <span id="fecha-display" style="font-weight:400;font-size:9.5pt;font-family:Arial,sans-serif;"></span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- FOOTER -->
+  <table class="footer-table">
+    <tr>
+      <td>
+        <span class="ft-label"><b>Establecido por:<br>
+        Jefe de Calidad<br>
+        Fecha: 18.01.23</b></span>
+      </td>
+      <td>
+        <span class="ft-label"><b>Verificado por:<br>
+        Dir. de Calidad<br>
+        Fecha: 18.01.23</b></span>
+      </td>
+      <td>
+        <span class="ft-label"><b>Aprobado por:<br>
+        Dir. General<br>
+        Fecha: 18.01.23</b></span>
+      </td>
+    </tr>
+  </table>
+
+</div><!-- /page -->
+
+
+<script>
+/* ════ SIGNATURE PAD ════ */
+const canvas = document.getElementById('sig-pad');
+const ctx = canvas.getContext('2d');
+let drawing = false, lastX = 0, lastY = 0;
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+}
+function drawLine(e) {
+  if (!drawing) return;
+  const p = getPos(e);
+  ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y);
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.8; ctx.lineCap = 'round'; ctx.stroke();
+  lastX = p.x; lastY = p.y;
+}
+canvas.addEventListener('mousedown',  e => { drawing=true; const p=getPos(e); lastX=p.x; lastY=p.y; });
+canvas.addEventListener('mousemove',  drawLine);
+canvas.addEventListener('mouseup',    () => drawing=false);
+canvas.addEventListener('mouseleave', () => drawing=false);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing=true; const p=getPos(e); lastX=p.x; lastY=p.y; }, {passive:false});
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); drawLine(e); }, {passive:false});
+canvas.addEventListener('touchend',   () => drawing=false);
+function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+/* ════ TOAST ════ */
+function toast(msg, type='info', ms=4500) {
+  const t = document.getElementById('toast');
+  t.innerHTML = msg; t.className = 'show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className='', ms);
+}
+
+/* ════ VALIDATION ════ */
+function validate() {
+  if (!document.getElementById('nombre-input').value.trim()) {
+    toast('⚠️ Ingresa el nombre del trabajador.', 'error'); return false;
+  }
+  const blank = document.createElement('canvas');
+  blank.width = canvas.width; blank.height = canvas.height;
+  if (canvas.toDataURL() === blank.toDataURL()) {
+    toast('⚠️ Dibuja la firma antes de continuar.', 'error'); return false;
+  }
+  return true;
+}
+
+/* ════ HIDE CONTROLS FOR PDF RENDER ════ */
+function hideForPDF(hide) {
+  document.querySelectorAll('.sig-controls, .action-bar').forEach(el => el.style.display = hide ? 'none' : '');
+  const ni = document.getElementById('nombre-input');
+  if (hide) {
+    ni.style.visibility = 'hidden';
+    ni.insertAdjacentHTML('afterend', `<span id="np" style="font-weight:400;font-size:9.5pt;font-family:Arial,sans-serif">${ni.value}</span>`);
+  } else {
+    ni.style.visibility = '';
+    document.getElementById('np')?.remove();
+  }
+}
+
+/* ════ SET LIMA DATE ════ */
+(function setLimaDate() {
+  const now = new Date();
+  const limaStr = now.toLocaleDateString('es-PE', {
+    timeZone: 'America/Lima',
+    day:   '2-digit',
+    month: '2-digit',
+    year:  'numeric'
+  }); // returns dd/mm/yyyy in es-PE locale
+  document.getElementById('fecha-display').textContent = limaStr;
+})();
+
+/* ════ GENERATE PDF BLOB ════ */
+function getNombre() {
+  return document.getElementById('nombre-input').value.trim().replace(/\s+/g,'_') || 'trabajador';
+}
+async function generatePDFBlob() {
+  hideForPDF(true);
+  const blob = await html2pdf()
+    .set({
+      margin: [0,0,0,0],
+      filename: getNombre() + '_acuerdo_notificacion.pdf',
+      image: { type:'jpeg', quality:0.98 },
+      html2canvas: { scale:2, useCORS:true, logging:false },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
+    })
+    .from(document.getElementById('printable'))
+    .outputPdf('blob');
+  hideForPDF(false);
+  return blob;
+}
+
+/* ════ DOWNLOAD PDF ════ */
+async function downloadPDF() {
+  if (!validate()) return;
+  toast('⏳ Generando PDF...', 'info', 10000);
+  try {
+    const blob = await generatePDFBlob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = getNombre() + '_acuerdo_notificacion.pdf'; a.click();
+    URL.revokeObjectURL(url);
+    toast('✅ PDF descargado correctamente.', 'success');
+  } catch(e) { toast('❌ Error: ' + e.message, 'error'); }
+}
+
+/* ════ SHAREPOINT MODAL ════ */
+const CFG_KEYS = ['cfg-tenant','cfg-client','cfg-site','cfg-folder'];
+function openModal() {
+  if (!validate()) return;
+  CFG_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v) document.getElementById(k).value = v; });
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+async function saveAndSend() {
+  CFG_KEYS.forEach(k => localStorage.setItem(k, document.getElementById(k).value.trim()));
+  closeModal();
+  await uploadToSharePoint();
+}
+
+/* ════ MSAL IMPLICIT FLOW (popup) ════ */
+function getMSALToken(tenantId, clientId) {
+  return new Promise(resolve => {
+    const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+    const scope = encodeURIComponent('https://graph.microsoft.com/Sites.ReadWrite.All Files.ReadWrite.All');
+    const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`
+      + `?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}`
+      + `&scope=${scope}&response_mode=fragment&prompt=select_account`;
+
+    const popup = window.open(url, 'msalPopup', 'width=520,height=660,resizable=yes');
+    if (!popup) {
+      toast('❌ Permite las ventanas emergentes del navegador para autenticarte con Microsoft.', 'error', 7000);
+      resolve(null); return;
+    }
+    const timer = setInterval(() => {
+      try {
+        if (popup.location.hash && popup.location.hash.includes('access_token')) {
+          clearInterval(timer); popup.close();
+          resolve(new URLSearchParams(popup.location.hash.substring(1)).get('access_token'));
+        }
+        if (popup.closed) { clearInterval(timer); resolve(null); }
+      } catch(e) { /* cross-origin, keep polling */ }
+    }, 500);
+  });
+}
+
+/* ════ UPLOAD TO SHAREPOINT ════ */
+async function uploadToSharePoint() {
+  const tenantId = localStorage.getItem('cfg-tenant');
+  const clientId = localStorage.getItem('cfg-client');
+  const siteUrl  = localStorage.getItem('cfg-site');
+  const folder   = localStorage.getItem('cfg-folder') || '/Documentos/Acuerdos';
+
+  if (!tenantId || !clientId || !siteUrl) {
+    toast('❌ Configuración incompleta. Vuelve a intentarlo.', 'error'); return;
+  }
+
+  toast('🔐 Abriendo ventana de autenticación Microsoft...', 'info', 15000);
+  const token = await getMSALToken(tenantId, clientId);
+  if (!token) { toast('❌ Autenticación cancelada o fallida.', 'error'); return; }
+
+  toast('⏳ Generando PDF y subiendo a SharePoint...', 'info', 20000);
+  try {
+    const pdfBlob = await generatePDFBlob();
+    const fileName = getNombre() + '_acuerdo_notificacion.pdf';
+
+    // Get site ID
+    const hostname = new URL(siteUrl).hostname;
+    const sitePath = new URL(siteUrl).pathname;
+    const siteRes  = await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    if (!siteRes.ok) throw new Error('No se pudo obtener el sitio de SharePoint. Verifica la URL del sitio.');
+    const siteId = (await siteRes.json()).id;
+
+    // Upload (simple upload, max ~4MB — suficiente para este PDF)
+    const uploadRes = await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:${folder}/${fileName}:/content`,
+      {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/pdf' },
+        body: pdfBlob
+      }
+    );
+    if (!uploadRes.ok) {
+      const err = await uploadRes.json();
+      throw new Error(err.error?.message || 'Error al subir el archivo.');
+    }
+    const file = await uploadRes.json();
+    toast(`✅ Guardado en SharePoint:<br><strong>${file.name}</strong><br>📁 ${folder}`, 'success', 8000);
+  } catch(e) {
+    toast('❌ ' + e.message, 'error', 8000);
+    console.error(e);
+  }
+}
+
+/* ════ GENERATE PDF BLOB ════ */
+</script>
+</body>
+</html>
