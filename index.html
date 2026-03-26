@@ -460,14 +460,6 @@ function validate() {
 /* ════ HIDE CONTROLS FOR PDF RENDER ════ */
 function hideForPDF(hide) {
   document.querySelectorAll('.sig-controls, .action-bar').forEach(el => el.style.display = hide ? 'none' : '');
-  const page = document.getElementById('printable');
-  if (hide) {
-    page.style.padding = '0';
-    page.style.margin = '0';
-  } else {
-    page.style.padding = '';
-    page.style.margin = '';
-  }
   const ni = document.getElementById('nombre-input');
   if (hide) {
     ni.style.visibility = 'hidden';
