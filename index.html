@@ -17,7 +17,7 @@
 
     /* ── ACTION BAR ── */
     .action-bar {
-      background: #1a3a6b;
+      background: #651C32;
       padding: 10px 24px;
       display: flex;
       align-items: center;
@@ -29,7 +29,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
     .action-bar span {
-      color: #9ab4d8;
+      color: #f5c4a1;
       font-size: 8.5pt;
       font-family: Arial, sans-serif;
       flex: 1;
@@ -50,8 +50,8 @@
     }
     .btn:hover { opacity: 0.88; transform: translateY(-1px); }
     .btn:active { transform: translateY(0); }
-    .btn-pdf         { background: #c8372d; color: #fff; }
-    .btn-sharepoint  { background: #057d54; color: #fff; }
+    .btn-pdf        { background: #FF9853; color: #3a0e1a; }
+    .btn-sharepoint { background: #fff; color: #651C32; border: 2px solid #FF9853; }
     .btn svg { width: 15px; height: 15px; fill: currentColor; flex-shrink: 0; }
 
     /* Toast */
@@ -94,7 +94,7 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.25);
       font-family: Arial, sans-serif;
     }
-    .modal h3 { font-size: 12pt; margin-bottom: 4px; color: #1a3a6b; }
+    .modal h3 { font-size: 12pt; margin-bottom: 4px; color: #651C32; }
     .modal .modal-desc { font-size: 8pt; color: #666; margin-bottom: 16px; }
     .modal label { display: block; font-size: 8.5pt; font-weight: 700; margin-bottom: 3px; color: #333; }
     .modal input {
@@ -109,7 +109,7 @@
       font-size: 9pt; font-family: Arial, sans-serif; cursor: pointer; font-weight: 700;
     }
     .btn-cancel { background: #e0e0e0; color: #333; }
-    .btn-save   { background: #0078d4; color: #fff; }
+    .btn-save   { background: #651C32; color: #fff; }
 
     /* ── PAGE ── */
     .page {
@@ -272,36 +272,26 @@
 
   <button class="btn btn-sharepoint" onclick="openModal()">
     <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-    PDF → SharePoint
+    Enviar a RRHH
   </button>
 </div>
 
-<!-- ══════════════ SHAREPOINT CONFIG MODAL ══════════════ -->
+<!-- ══════════════ MODAL ENVIAR A RRHH ══════════════ -->
 <div class="modal-overlay" id="modal">
   <div class="modal">
-    <h3>📤 Enviar a SharePoint</h3>
+    <h3>📤 Enviar a RRHH</h3>
     <p class="modal-desc">
-      Necesitas registrar una app en Azure AD con permisos <strong>Sites.ReadWrite.All</strong>.<br>
-      Los datos se guardan solo en tu navegador (localStorage).
+      Se generará el PDF y se abrirá Gmail con el documento listo para enviar.<br>
+      Solo tienes que pulsar <strong>Enviar</strong> en Gmail.
     </p>
 
-    <label>Tenant ID</label>
-    <input type="text" id="cfg-tenant" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-    <p class="hint">Azure Portal → Azure Active Directory → Overview → Tenant ID</p>
-
-    <label>Client ID (App Registration)</label>
-    <input type="text" id="cfg-client" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-    <p class="hint">Azure Portal → App registrations → tu app → Application (client) ID</p>
-
-    <label>URL del sitio SharePoint</label>
-    <input type="text" id="cfg-site" placeholder="https://tuempresa.sharepoint.com/sites/RRHH" />
-
-    <label>Carpeta destino</label>
-    <input type="text" id="cfg-folder" placeholder="/Documentos/Acuerdos" value="/Documentos/Acuerdos" />
+    <label>Correo de RRHH (destinatario)</label>
+    <input type="email" id="cfg-email" placeholder="rrhh@empresa.com" />
+    <p class="hint">Configurado por el administrador. Se guarda en este dispositivo.</p>
 
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
-      <button class="btn-save" onclick="saveAndSend()">Autenticar y enviar</button>
+      <button class="btn-save" onclick="saveAndSend()">Generar y abrir Gmail</button>
     </div>
   </div>
 </div>
@@ -536,8 +526,8 @@ async function downloadPDF() {
   } catch(e) { toast('❌ Error: ' + e.message, 'error'); }
 }
 
-/* ════ SHAREPOINT MODAL ════ */
-const CFG_KEYS = ['cfg-tenant','cfg-client','cfg-site','cfg-folder'];
+/* ════ MODAL ════ */
+const CFG_KEYS = ['cfg-email'];
 function openModal() {
   if (!validate()) return;
   CFG_KEYS.forEach(k => { const v = localStorage.getItem(k); if(v) document.getElementById(k).value = v; });
@@ -546,82 +536,52 @@ function openModal() {
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
 
 async function saveAndSend() {
-  CFG_KEYS.forEach(k => localStorage.setItem(k, document.getElementById(k).value.trim()));
+  const email = document.getElementById('cfg-email').value.trim();
+  if (!email) { toast('⚠️ Ingresa el correo de RRHH.', 'error'); return; }
+  localStorage.setItem('cfg-email', email);
   closeModal();
-  await uploadToSharePoint();
+  await sendViaGmail(email);
 }
 
-/* ════ MSAL IMPLICIT FLOW (popup) ════ */
-function getMSALToken(tenantId, clientId) {
-  return new Promise(resolve => {
-    const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-    const scope = encodeURIComponent('https://graph.microsoft.com/Sites.ReadWrite.All Files.ReadWrite.All');
-    const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`
-      + `?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}`
-      + `&scope=${scope}&response_mode=fragment&prompt=select_account`;
-
-    const popup = window.open(url, 'msalPopup', 'width=520,height=660,resizable=yes');
-    if (!popup) {
-      toast('❌ Permite las ventanas emergentes del navegador para autenticarte con Microsoft.', 'error', 7000);
-      resolve(null); return;
-    }
-    const timer = setInterval(() => {
-      try {
-        if (popup.location.hash && popup.location.hash.includes('access_token')) {
-          clearInterval(timer); popup.close();
-          resolve(new URLSearchParams(popup.location.hash.substring(1)).get('access_token'));
-        }
-        if (popup.closed) { clearInterval(timer); resolve(null); }
-      } catch(e) { /* cross-origin, keep polling */ }
-    }, 500);
-  });
-}
-
-/* ════ UPLOAD TO SHAREPOINT ════ */
-async function uploadToSharePoint() {
-  const tenantId = localStorage.getItem('cfg-tenant');
-  const clientId = localStorage.getItem('cfg-client');
-  const siteUrl  = localStorage.getItem('cfg-site');
-  const folder   = localStorage.getItem('cfg-folder') || '/Documentos/Acuerdos';
-
-  if (!tenantId || !clientId || !siteUrl) {
-    toast('❌ Configuración incompleta. Vuelve a intentarlo.', 'error'); return;
-  }
-
-  toast('🔐 Abriendo ventana de autenticación Microsoft...', 'info', 15000);
-  const token = await getMSALToken(tenantId, clientId);
-  if (!token) { toast('❌ Autenticación cancelada o fallida.', 'error'); return; }
-
-  toast('⏳ Generando PDF y subiendo a SharePoint...', 'info', 20000);
+/* ════ ENVIAR VÍA GMAIL ════ */
+async function sendViaGmail(hrEmail) {
+  toast('⏳ Generando PDF...', 'info', 15000);
   try {
     const pdfBlob = await generatePDFBlob();
+    const nombre  = document.getElementById('nombre-input').value.trim();
+    const fecha   = document.getElementById('fecha-display').textContent;
     const fileName = getNombre() + '_acuerdo_notificacion.pdf';
 
-    // Get site ID
-    const hostname = new URL(siteUrl).hostname;
-    const sitePath = new URL(siteUrl).pathname;
-    const siteRes  = await fetch(
-      `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}`,
-      { headers: { Authorization: 'Bearer ' + token } }
-    );
-    if (!siteRes.ok) throw new Error('No se pudo obtener el sitio de SharePoint. Verifica la URL del sitio.');
-    const siteId = (await siteRes.json()).id;
+    // Convertir a base64 para el link de descarga
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result); // data:application/pdf;base64,...
+      r.onerror = rej;
+      r.readAsDataURL(pdfBlob);
+    });
 
-    // Upload (simple upload, max ~4MB — suficiente para este PDF)
-    const uploadRes = await fetch(
-      `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:${folder}/${fileName}:/content`,
-      {
-        method: 'PUT',
-        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/pdf' },
-        body: pdfBlob
-      }
+    // 1. Descargar el PDF automáticamente
+    const a = document.createElement('a');
+    a.href = base64;
+    a.download = fileName;
+    a.click();
+
+    // 2. Abrir Gmail con destinatario, asunto y cuerpo pre-llenados
+    //    El operario adjunta manualmente el PDF que acaba de descargarse
+    const asunto = encodeURIComponent(`Acuerdo de Notificación - ${nombre} - ${fecha}`);
+    const cuerpo = encodeURIComponent(
+      `Estimado equipo de RRHH,\n\nAdjunto el Acuerdo de Notificación firmado.\n\nNombre: ${nombre}\nFecha: ${fecha}\n\nEl documento PDF se descargó automáticamente en su dispositivo.\n\nSaludos.`
     );
-    if (!uploadRes.ok) {
-      const err = await uploadRes.json();
-      throw new Error(err.error?.message || 'Error al subir el archivo.');
-    }
-    const file = await uploadRes.json();
-    toast(`✅ Guardado en SharePoint:<br><strong>${file.name}</strong><br>📁 ${folder}`, 'success', 8000);
+
+    // Pequeña espera para que el download inicie antes de abrir Gmail
+    await new Promise(r => setTimeout(r, 1200));
+
+    window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(hrEmail)}&su=${asunto}&body=${cuerpo}`, '_blank');
+
+    toast(
+      '✅ PDF descargado. Gmail se abrió con el correo listo.<br><strong>Adjunta el PDF descargado y pulsa Enviar.</strong>',
+      'success', 10000
+    );
   } catch(e) {
     toast('❌ ' + e.message, 'error', 8000);
     console.error(e);
